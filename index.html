@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>拼豆图纸生成器</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <aside class="control-panel" aria-label="生成设置">
+          <div class="brand-block">
+            <p class="eyebrow">Perler Pattern Maker</p>
+            <h1>拼豆图纸生成器</h1>
+          </div>
+
+          <section class="panel-block">
+            <div class="block-title">
+              <span class="step-dot">1</span>
+              <h2>图片上传</h2>
+            </div>
+            <label class="file-drop" for="imageInput">
+              <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" />
+              <span class="file-title">上传图片</span>
+              <span id="fileName" class="file-meta">支持 JPG、PNG、WEBP</span>
+            </label>
+          </section>
+
+          <section class="panel-block">
+            <div class="block-title">
+              <span class="step-dot">2</span>
+              <h2>整图构图</h2>
+            </div>
+            <div class="crop-preview">
+              <canvas id="cropCanvas" width="380" height="285" aria-label="整图构图预览"></canvas>
+              <p id="cropEmpty" class="crop-empty">上传后拖拽方框选择构图区域</p>
+            </div>
+            <p class="crop-help">在预览图上按住拖拽，框选需要生成图纸的区域。</p>
+            <div class="image-option-row">
+              <label class="checkbox-field" for="autoTrim">
+                <input id="autoTrim" type="checkbox" checked />
+                <span>自动裁剪空白边缘</span>
+              </label>
+              <span class="help-dot" title="自动去掉四周纯白 / 透明的留白，让主体尽量占满图纸">?</span>
+            </div>
+            <div class="image-option-row">
+              <label class="checkbox-field" for="removeBg">
+                <input id="removeBg" type="checkbox" checked />
+                <span>去除简单背景</span>
+              </label>
+              <span class="help-dot" title="从四边识别单一背景色并抠掉，背景不再占豆；背景太花时会自动跳过">?</span>
+            </div>
+          </section>
+
+          <section class="panel-block">
+            <div class="block-title">
+              <span class="step-dot">3</span>
+              <h2>图纸设置</h2>
+            </div>
+            <div class="field-group bead-size-control">
+              <div id="sizeModeButtons" class="segmented-control cols-2" role="group" aria-label="尺寸方式">
+                <button type="button" data-value="ratio" aria-pressed="true">按图片比例</button>
+                <button type="button" data-value="board" aria-pressed="false">按豆板尺寸</button>
+              </div>
+              <p id="sizeModeHelp" class="size-help">高度按构图区域比例自动适配。</p>
+              <div id="sizePresetGrid" class="size-preset-grid" role="group" aria-label="常用尺寸">
+                <button type="button" data-size="16">16×16</button>
+                <button type="button" data-size="26">26×26</button>
+                <button type="button" data-size="32">32×32</button>
+                <button type="button" data-size="50">50×50</button>
+                <button type="button" data-size="52">52×52</button>
+                <button type="button" data-size="64">64×64</button>
+                <button type="button" data-size="80">80×80</button>
+                <button type="button" data-size="100">100×100</button>
+                <button type="button" data-size="128">128×128</button>
+              </div>
+              <div class="custom-size-row">
+                <label for="beadWidthInput">宽</label>
+                <input id="beadWidthInput" type="number" min="8" max="180" step="1" value="29" inputmode="numeric" aria-label="图纸宽度" />
+                <span class="size-times">×</span>
+                <label for="beadHeightInput">高</label>
+                <input id="beadHeightInput" type="number" min="8" max="180" step="1" value="29" inputmode="numeric" aria-label="图纸高度" />
+                <span class="size-unit">颗</span>
+              </div>
+              <input id="beadWidth" type="hidden" value="29" />
+              <input id="beadHeight" type="hidden" value="29" />
+              <p id="beadSizeValue" class="size-summary">29 颗宽 / 29 颗高</p>
+            </div>
+            <div class="field-group">
+              <label for="beadSpec">珠子规格（已锁定）</label>
+              <select id="beadSpec">
+                <option value="MARD-2.6-hard" selected>MARD 2.6mm 硬质 · 29×29 标准拼板</option>
+              </select>
+              <p class="size-help">导出规格锁定为 2.6mm，不会用默认 5mm 或其他品牌规格出图。</p>
+            </div>
+            <p id="physicalSize" class="size-summary physical-size">实际成品：—</p>
+          </section>
+
+          <section class="panel-block">
+            <div class="block-title">
+              <span class="step-dot">4</span>
+              <h2>颜色与风格</h2>
+            </div>
+            <div class="field-group">
+              <label for="styleMode">处理模式</label>
+              <select id="styleMode">
+                <option value="cartoon" selected>卡通</option>
+                <option value="realistic">真实</option>
+                <option value="hybrid">卡通真实合并</option>
+                <option value="smooth">平滑</option>
+                <option value="direct">纯映射</option>
+              </select>
+              <p id="styleDesc" class="size-help">画面更清爽，适合动漫、插画和线条清晰的图片。</p>
+            </div>
+            <label class="checkbox-field" for="preserveColor">
+              <input id="preserveColor" type="checkbox" />
+              <span>保持原图色彩</span>
+            </label>
+            <div class="field-group">
+              <label for="brandMode">拼豆品牌</label>
+              <select id="brandMode"></select>
+            </div>
+            <div class="field-group">
+              <label for="rangeMode">色卡范围</label>
+              <select id="rangeMode"></select>
+            </div>
+            <select id="paletteMode" class="visually-hidden" aria-hidden="true" tabindex="-1">
+              <option value="MARD221" selected>MARD 221 标准版</option>
+              <option value="MARD291">MARD 291</option>
+              <option value="Hama">Hama 92</option>
+              <option value="Perler">Perler 103</option>
+              <option value="COCO">COCO 291</option>
+              <option value="Manman">漫漫 278</option>
+              <option value="Panpan">盼盼 289</option>
+              <option value="Mixiaowo">咪小窝 290</option>
+              <option value="ArtkalC197">优肯 C 197</option>
+              <option value="ArtkalM221">优肯 M 221</option>
+              <option value="Artkal418">优肯 418</option>
+              <option value="ArtkalS199">Artkal S 199</option>
+            </select>
+            <div class="field-group">
+              <label for="beadSet">自有套装</label>
+              <select id="beadSet">
+                <option value="all" selected>不限（用当前色卡全部颜色）</option>
+                <option value="MARD221">MARD 221 基础套装（禁用 P/Q/R/T/Y/ZG 特殊系）</option>
+                <option value="MARD291">MARD 291 全套装（含特殊系）</option>
+              </select>
+              <p id="beadSetHint" class="size-help">—</p>
+              <p class="size-help">特殊色标记：* 珠光 · △ 荧光 · ☆ 夜光 · ◇ 透明</p>
+            </div>
+            <div class="field-group">
+              <label for="excludedColors">禁用色号</label>
+              <input id="excludedColors" type="text" placeholder="例如 H7 A1 80-19001" />
+            </div>
+            <div class="field-group">
+              <div class="range-label">
+                <label for="colorCount">最大颜色数</label>
+                <span id="colorCountValue">40 色</span>
+              </div>
+              <input id="colorCount" type="range" min="6" max="60" step="1" value="40" />
+              <div class="range-hints" aria-hidden="true"><span>更好拼</span><span>更还原</span></div>
+            </div>
+            <div class="field-group">
+              <label id="colorPresetLabel" for="colorPreset">用途预设</label>
+              <select id="colorPreset" class="visually-hidden" aria-labelledby="colorPresetLabel">
+                <option value="custom" selected>自定义</option>
+                <option value="illustration">插画 16~24 色</option>
+                <option value="photo">照片 20~30 色</option>
+              </select>
+              <div id="colorPresetButtons" class="segmented-control cols-3" role="group" aria-labelledby="colorPresetLabel">
+                <button type="button" data-value="custom" aria-pressed="true">自定义</button>
+                <button type="button" data-value="illustration" aria-pressed="false">插画 16~24 色</button>
+                <button type="button" data-value="photo" aria-pressed="false">照片 20~30 色</button>
+              </div>
+            </div>
+            <div class="field-group">
+              <div class="range-label">
+                <label for="minColorCount">最少颜色阈值</label>
+                <span id="minColorCountValue">关闭</span>
+              </div>
+              <input id="minColorCount" type="range" min="0" max="200" step="2" value="0" />
+              <div class="range-hints" aria-hidden="true"><span>关闭</span><span>狠剔杂色</span></div>
+              <p class="size-help">用量低于阈值的颜色会并入最接近的保留色，用于剔除孤立杂色。</p>
+            </div>
+            <label class="checkbox-field" for="isolatedCleanup">
+              <input id="isolatedCleanup" type="checkbox" checked />
+              <span>孤立像素检测（自动合并 1~2 颗的杂色点）</span>
+            </label>
+          </section>
+
+          <section class="panel-block">
+            <div class="block-title">
+              <span class="step-dot">5</span>
+              <h2>生成与导出</h2>
+            </div>
+            <button id="generateButton" class="primary-button" type="button" disabled>生成图纸</button>
+            <div class="button-row">
+              <button id="exportButton" class="secondary-button" type="button" disabled>导出 PNG</button>
+              <button id="exportPdfButton" class="secondary-button" type="button" disabled>导出 PDF</button>
+              <button id="saveProjectButton" class="secondary-button" type="button" disabled>保存项目</button>
+            </div>
+            <label class="load-project" for="projectInput">
+              <input id="projectInput" type="file" accept="application/json" />
+              <span>载入项目</span>
+            </label>
+            <label class="checkbox-field" for="tileBoards">
+              <input id="tileBoards" type="checkbox" />
+              <span>一张 A4 排多块拼板（省纸）</span>
+            </label>
+            <label class="checkbox-field" for="mirrorPages">
+              <input id="mirrorPages" type="checkbox" checked />
+              <span>附加镜像翻转页（熨烫翻面时对照）</span>
+            </label>
+            <div class="field-group">
+              <label for="notesText">页脚备注（工艺要求）</label>
+              <textarea id="notesText" rows="2" placeholder="例如：边缘烫牢；重点部位用珠光色 ZG1"></textarea>
+            </div>
+            <p class="print-help">
+              PDF 为矢量输出（PDF 1.4）：图案、色号、坐标都是矢量，放大不模糊、体积更小；ASCII 色号用随文件自带的点阵字形，中文用 PDF 规范内置字体，换设备 / 打印机不会缺字错位。
+              首页是成品缩略图，末页是「颜色清单」；中间按 29×29 标准拼板分页，每颗豆实际 2.6mm，不自动缩放。勾选省纸模式则一张 A4 排多块拼板（仍 100% 实际大小，但不印图例）。
+              勾选镜像页会在图案页之后追加一套左右翻转的图纸，方便熨烫翻面时对照。打印时纸张选 A4、缩放选「实际大小 / 100%」，不要选「适应页面」。
+            </p>
+            <p class="print-help">
+              位图（PNG）导出分辨率按 313 DPI 输出，高于 300 DPI，色号不会发虚；超大图纸会自动降分辨率，状态栏会给出实际 DPI。
+            </p>
+            <p id="codeCheck" class="code-check">色号抽样校验：生成图纸后显示。</p>
+            <p id="statusText" class="status-text">请先上传一张图片。</p>
+          </section>
+        </aside>
+
+        <section class="preview-area" aria-label="图纸预览">
+          <div class="preview-header">
+            <div>
+              <p class="eyebrow">Pattern Preview</p>
+              <h2>生成结果</h2>
+            </div>
+            <p id="patternMeta" class="pattern-meta" aria-live="polite"></p>
+          </div>
+
+          <div id="resultTabs" class="result-tabs" role="tablist" aria-label="结果视图">
+            <button type="button" role="tab" data-view="source" aria-selected="false">原图</button>
+            <button type="button" role="tab" data-view="render" aria-selected="false">效果图</button>
+            <button type="button" role="tab" data-view="pattern" aria-selected="true">图纸</button>
+          </div>
+
+          <div class="pattern-view-controls" aria-label="图纸查看控制">
+            <div class="pattern-action-buttons">
+              <button id="zoomFitButton" class="view-action-button" type="button" disabled>适应窗口</button>
+              <button id="mirrorButton" class="view-action-button" type="button" disabled aria-pressed="false">
+                左右镜像
+              </button>
+            </div>
+            <div id="toolButtons" class="pattern-action-buttons tool-buttons" role="group" aria-label="编辑工具">
+              <button class="view-action-button" type="button" data-tool="pan" aria-pressed="true" disabled>拖动平移</button>
+              <button class="view-action-button" type="button" data-tool="paint" aria-pressed="false" disabled>拖动涂色</button>
+              <button class="view-action-button" type="button" data-tool="eyedropper" aria-pressed="false" disabled>吸管</button>
+              <button class="view-action-button" type="button" data-tool="eraser" aria-pressed="false" disabled>橡皮擦</button>
+            </div>
+            <span id="toolHelp" class="pattern-view-help">双指缩放，单指拖动；选好颜色后轻点格子即可替换</span>
+          </div>
+          <div id="canvasStage" class="canvas-stage">
+            <canvas id="patternCanvas" width="580" height="580" aria-label="拼豆图纸画布"></canvas>
+            <div id="emptyState" class="empty-state">上传图片、调整构图和色卡后生成图纸。</div>
+          </div>
+
+          <div class="result-grid">
+            <section class="info-panel">
+              <div class="panel-heading">
+                <h3>手动编辑</h3>
+                <div class="panel-heading-actions">
+                  <button id="copyColorsButton" class="mini-button" type="button" disabled>复制颜色信息</button>
+                  <button id="undoButton" class="mini-button" type="button" disabled>撤销</button>
+                </div>
+              </div>
+              <div class="field-group compact">
+                <label for="paintColor">当前图纸颜色</label>
+                <select id="paintColor" class="visually-hidden" disabled></select>
+                <div id="paintColorList" class="paint-color-list disabled" aria-label="画笔颜色"></div>
+              </div>
+              <div class="field-group compact palette-paint-group">
+                <label>所选色卡可用颜色（已按套装过滤）</label>
+                <div id="paintPaletteColorList" class="palette-paint-list disabled" aria-label="所选色卡全部可编辑颜色"></div>
+              </div>
+              <div class="bulk-replace-panel">
+                <div class="bulk-replace-head">
+                  <h4>一键替换色号</h4>
+                  <span id="replaceSourceSummary" class="replace-summary">未选择</span>
+                </div>
+                <div class="field-group compact">
+                  <label id="replaceSourceLabel">图纸中的原色号（可多选）</label>
+                  <div class="replace-source-actions">
+                    <button id="replaceSelectAllButton" class="mini-button" type="button" disabled>全选</button>
+                    <button id="replaceClearButton" class="mini-button" type="button" disabled>清空</button>
+                  </div>
+                  <div id="replaceSourceList" class="replace-source-list disabled" role="group" aria-labelledby="replaceSourceLabel"></div>
+                </div>
+                <div class="replace-target-row">
+                  <span class="replace-arrow" aria-hidden="true">替换为</span>
+                  <label class="visually-hidden" for="replaceTargetCode">替换色号</label>
+                  <input
+                    id="replaceTargetCode"
+                    type="text"
+                    list="replaceCodeOptions"
+                    placeholder="选择或输入替换色号"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    disabled
+                  />
+                </div>
+                <datalist id="replaceCodeOptions"></datalist>
+                <p id="replacePreview" class="replace-preview" aria-live="polite"></p>
+                <button id="replaceAllButton" class="secondary-button replace-action-button" type="button" disabled>
+                  替换
+                </button>
+              </div>
+            </section>
+
+            <section class="info-panel">
+              <h3>预览</h3>
+              <div class="source-preview">
+                <img id="sourcePreview" alt="当前构图区域预览" />
+              </div>
+            </section>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./bead-palettes.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
