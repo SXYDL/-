@@ -1,9 +1,180 @@
-// 替换为你自己的项目地址和公钥
+// ========== 配置项：替换成你自己的 ==========
 const SUPABASE_URL = "https://oghfwvjxnrenqtunkuby.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HCjTnSTJHUlAbtebEJzl8g_5-SuhRnm";
 
 // 初始化 Supabase 连接
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// 生成本地设备ID，用于绑定卡密
+let deviceId = localStorage.getItem("device_id");
+if (!deviceId) {
+  deviceId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  localStorage.setItem("device_id", deviceId);
+}
+
+// 页面加载完成后检查激活状态
+window.addEventListener("DOMContentLoaded", async () => {
+  const savedCode = localStorage.getItem("active_code");
+  if (savedCode) {
+    const valid = await checkCodeValid(savedCode);
+    if (valid) {
+      showApp();
+      return;
+    }
+    localStorage.removeItem("active_code");
+  }
+});
+
+// 绑定激活按钮事件
+document.getElementById("activate-btn").addEventListener("click", handleActivate);
+
+// 执行激活逻辑
+async function handleActivate() {
+  const inputCode = document.getElementById("code-input").value.trim().toUpperCase();
+  const tip = document.getElementById("auth-tip");
+  
+  if (!inputCode) {
+    tip.textContent = "请输入激活码";
+    return;
+  }
+
+  // 查询卡密信息
+  const { data, error } = await supabase
+    .from("activation_codes")
+    .select("is_used, device_id, status")
+    .eq("code", inputCode)
+    .single();
+
+  if (error || !data) {
+    tip.textContent = "无效的激活码";
+    return;
+  }
+
+  if (data.status !== "active") {
+    tip.textContent = "该激活码已被禁用，请联系客服";
+    return;
+  }
+
+  // 未使用：激活并绑定当前设备
+  if (!data.is_used) {
+    const { error: updateError } = await supabase
+      .from("activation_codes")
+      .update({
+        is_used: true,
+        activated_at: new Date().toISOString(),
+        device_id: deviceId
+      })
+      .eq("code", inputCode);
+
+    if (!updateError) {
+      localStorage.setItem("active_code", inputCode);
+      tip.style.color = "green";
+      tip.textContent = "激活成功，正在进入...";
+      setTimeout(() => showApp(), 800);
+    }
+    return;
+  }
+
+  // 已使用：校验是否为同一设备
+  if (data.device_id === deviceId) {
+    localStorage.setItem("active_code", inputCode);
+    tip.style.color = "green";
+    tip.textContent = "激活成功";
+    setTimeout(() => showApp(), 800);
+  } else {
+    tip.textContent = "该激活码已绑定其他设备，无法共用";
+  }
+}
+
+// 校验卡密是否在有效期内（以服务器时间为准）
+async function checkCodeValid(code) {
+  try {
+    // 获取服务器时间，防止用户改本地时间绕过
+    const { data: timeData } = await supabase.raw("SELECT EXTRACT(EPOCH FROM NOW()) AS server_time");
+    const serverNow = timeData[0].server_time;
+
+    const { data } = await supabase
+      .from("activation_codes")
+      .select("activated_at, duration_days, status")
+      .eq("code", code)
+      .single();
+
+    if (!data || data.status !== "active" || !data.activated_at) return false;
+
+    const expireTime = new Date(data.activated_at).getTime() / 1000 + data.duration_days * 86400;
+    return serverNow < expireTime;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 显示生成器界面
+function showApp() {
+  document.getElementById("auth-panel").style.display = "none";
+  document.getElementById("app-container").style.display = "block";
+}
+
+// ========== 生成前统一校验函数 ==========
+// 把你原来生成按钮的点击事件，替换成调用这个函数
+async function checkAndGenerate() {
+  const activeCode = localStorage.getItem("active_code");
+  if (!activeCode) {
+    alert("请先激活后再使用");
+    return;
+  }
+
+  // 1. 校验有效期
+  const { data: timeData } = await supabase.raw("SELECT EXTRACT(EPOCH FROM NOW()) AS server_time");
+  const serverNow = timeData[0].server_time;
+
+  const { data: codeInfo } = await supabase
+    .from("activation_codes")
+    .select("activated_at, duration_days, daily_limit, status")
+    .eq("code", activeCode)
+    .single();
+
+  if (codeInfo.status !== "active") {
+    alert("该激活码已被禁用，请联系客服");
+    return;
+  }
+
+  const expireTime = new Date(codeInfo.activated_at).getTime() / 1000 + codeInfo.duration_days * 86400;
+  if (serverNow > expireTime) {
+    alert("您的会员已到期，请重新购买");
+    localStorage.removeItem("active_code");
+    location.reload();
+    return;
+  }
+
+  // 2. 校验当日生成次数
+  const today = new Date().toISOString().split("T")[0];
+  const { data: log } = await supabase
+    .from("generate_log")
+    .select("count")
+    .eq("code", activeCode)
+    .eq("date", today)
+    .single();
+
+  const used = log ? log.count : 0;
+  if (used >= codeInfo.daily_limit) {
+    alert(`今日生成次数已达上限（${codeInfo.daily_limit}次），请明日再试`);
+    return;
+  }
+
+  // 3. 次数+1
+  if (log) {
+    await supabase.from("generate_log")
+      .update({ count: used + 1 })
+      .eq("code", activeCode).eq("date", today);
+  } else {
+    await supabase.from("generate_log")
+      .insert({ code: activeCode, date: today, count: 1 });
+  }
+
+  // 4. 执行你原来的生成函数
+  // 注意：把下面这行替换成你代码里实际的生成函数名
+  generatePattern();
+}
 
 /* 双梦小馆-拼豆图纸生成器 —— 纯前端实现 */
 (() => {
