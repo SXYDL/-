@@ -1,8 +1,8 @@
-const SUPABASE_URL = "https://oghfwvjxnrenqtunkuby.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HCjTnSTJHUlAbtebEJzl8g_5-SuhRnm";
+const sbClient_URL = "https://oghfwvjxnrenqtunkuby.supabase.co";
+const sbClient_PUBLISHABLE_KEY = "sb_publishable_HCjTnSTJHUlAbtebEJzl8g_5-SuhRnm";
 
-// 初始化 Supabase 连接
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// 初始化 sbClient 连接
+const sbClient = window.sbClient.createClient(sbClient_URL, sbClient_PUBLISHABLE_KEY);
 
 // 生成本地设备ID，用于绑定卡密
 let deviceId = localStorage.getItem("device_id");
@@ -38,7 +38,7 @@ async function handleActivate() {
   }
 
   // 查询卡密信息
-  const { data, error } = await supabase
+  const { data, error } = await sbClient
     .from("activation_codes")
     .select("is_used, device_id, status")
     .eq("code", inputCode)
@@ -56,7 +56,7 @@ async function handleActivate() {
 
   // 未使用：激活并绑定当前设备
   if (!data.is_used) {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await sbClient
       .from("activation_codes")
       .update({
         is_used: true,
@@ -89,10 +89,10 @@ async function handleActivate() {
 async function checkCodeValid(code) {
   try {
     // 获取服务器时间，防止用户改本地时间绕过
-    const { data: timeData } = await supabase.raw("SELECT EXTRACT(EPOCH FROM NOW()) AS server_time");
+    const { data: timeData } = await sbClient.raw("SELECT EXTRACT(EPOCH FROM NOW()) AS server_time");
     const serverNow = timeData[0].server_time;
 
-    const { data } = await supabase
+    const { data } = await sbClient
       .from("activation_codes")
       .select("activated_at, duration_days, status")
       .eq("code", code)
@@ -123,10 +123,10 @@ async function checkAndGenerate() {
   }
 
   // 1. 校验有效期
-  const { data: timeData } = await supabase.raw("SELECT EXTRACT(EPOCH FROM NOW()) AS server_time");
+  const { data: timeData } = await sbClient.raw("SELECT EXTRACT(EPOCH FROM NOW()) AS server_time");
   const serverNow = timeData[0].server_time;
 
-  const { data: codeInfo } = await supabase
+  const { data: codeInfo } = await sbClient
     .from("activation_codes")
     .select("activated_at, duration_days, daily_limit, status")
     .eq("code", activeCode)
@@ -147,7 +147,7 @@ async function checkAndGenerate() {
 
   // 2. 校验当日生成次数
   const today = new Date().toISOString().split("T")[0];
-  const { data: log } = await supabase
+  const { data: log } = await sbClient
     .from("generate_log")
     .select("count")
     .eq("code", activeCode)
@@ -162,11 +162,11 @@ async function checkAndGenerate() {
 
   // 3. 次数+1
   if (log) {
-    await supabase.from("generate_log")
+    await sbClient.from("generate_log")
       .update({ count: used + 1 })
       .eq("code", activeCode).eq("date", today);
   } else {
-    await supabase.from("generate_log")
+    await sbClient.from("generate_log")
       .insert({ code: activeCode, date: today, count: 1 });
   }
 
