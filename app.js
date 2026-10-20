@@ -4087,7 +4087,7 @@ async function checkAndGenerate() {
   function bindEvents() {
     imageInput.addEventListener('change', handleImageUpload);
     projectInput.addEventListener('change', handleProjectLoad);
-    generateButton.addEventListener('click', generatePattern);
+    generateButton.addEventListener('click', checkAndGenerate);
     exportButton.addEventListener('click', exportPng);
     exportPdfButton.addEventListener('click', exportPdf);
     saveProjectButton.addEventListener('click', saveProject);
