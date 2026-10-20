@@ -1,3 +1,10 @@
+// 替换为你自己的项目地址和公钥
+const SUPABASE_URL = "https://oghfwvjxnrenqtunkuby.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HCjTnSTJHUlAbtebEJzl8g_5-SuhRnm";
+
+// 初始化 Supabase 连接
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
 /* 双梦小馆-拼豆图纸生成器 —— 纯前端实现 */
 (() => {
   'use strict';
