@@ -1,8 +1,8 @@
-const sbClient_URL = "https://oghfwvjxnrenqtunkuby.supabase.co";
-const sbClient_PUBLISHABLE_KEY = "sb_publishable_HCjTnSTJHUlAbtebEJzl8g_5-SuhRnm";
+const SUPABASE_URL = "https://oghfwvjxnrenqtunkuby.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_HCjTnSTJHUlAbtebEJzl8g_5-SuhRnm";
 
 // 初始化 sbClient 连接
-const sbClient = window.sbClient.createClient(sbClient_URL, sbClient_PUBLISHABLE_KEY);
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
 // 生成本地设备ID，用于绑定卡密
 let deviceId = localStorage.getItem("device_id");
