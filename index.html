@@ -8,6 +8,18 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
+    <!-- 激活面板 默认显示 -->
+<div id="auth-panel" style="max-width:500px;margin:80px auto;padding:30px;text-align:center;">
+  <h2>请输入激活码解锁功能</h2>
+  <input id="code-input" type="text" placeholder="请输入8位激活码" style="width:80%;padding:12px;font-size:16px;margin:20px 0;">
+  <br>
+  <button id="activate-btn" style="padding:12px 30px;font-size:16px;cursor:pointer;">立即激活</button>
+  <p id="auth-tip" style="color:red;margin-top:15px;"></p>
+</div>
+
+<!-- 生成器容器 默认隐藏 -->
+<div id="app-container" style="display:none;">
+
     <main class="app-shell">
       <section class="workspace">
         <aside class="control-panel" aria-label="生成设置">
@@ -327,6 +339,7 @@
         </section>
       </section>
     </main>
+  </div>
 
     <script src="./bead-palettes.js"></script>
     <script src="./app.js"></script>
